@@ -7,7 +7,7 @@ Add-Type -AssemblyName System.Drawing
 $CurrentVersion = "1.0.0"
 
 function Get-LatestVersion {
-    $versionUrl = "https://raw.githubusercontent.com/YourUser/YourRepo/main/version.txt"
+    $versionUrl = "https://github.com/Usfis/General-Installer/blob/main/version.txt"
     try {
         return (Invoke-RestMethod -Uri $versionUrl -UseBasicParsing).Trim()
     } catch {
