@@ -4,31 +4,28 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # VERSION CONTROL SETUP
-$CurrentVersion = "1.0.1"
-$ScriptName = "GenInstaller_v$CurrentVersion.ps1"
-$ScriptDirectory = [System.IO.Path]::GetDirectoryName($MyInvocation.MyCommand.Path)
+$CurrentVersion = "1.0.0"  # This should be your current version number
 
-# Check for older versions in the same directory
-function Check-OlderVersions {
-    $files = Get-ChildItem -Path $ScriptDirectory -Filter "GenInstaller_v*.ps1"
-    $olderVersions = $files | Where-Object { $_.Name -ne $ScriptName }
-    
-    if ($olderVersions.Count -gt 0) {
-        $versionNames = $olderVersions | ForEach-Object { $_.Name }
-        $msg = "Older versions found: `n$($versionNames -join "`n")`nDo you want to delete them?"
-        $choice = [System.Windows.Forms.MessageBox]::Show($msg, "Delete Old Versions", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+function Get-NextAvailableVersion {
+    param (
+        [string]$currentVersion,
+        [int]$maxSearchAhead = 100
+    )
 
-        if ($choice -eq [System.Windows.Forms.DialogResult]::Yes) {
-            $olderVersions | ForEach-Object { Remove-Item $_.FullName -Force }
-            [System.Windows.Forms.MessageBox]::Show("Old versions deleted.", "Success")
-        } else {
-            # Remember the user's choice to not delete old versions
-            $preferenceFile = "$ScriptDirectory\deleteOldVersionsPreference.txt"
-            if (-not (Test-Path $preferenceFile)) {
-                "Do not ask about deleting older versions again." | Out-File -FilePath $preferenceFile
-            }
+    $current = [version]$currentVersion
+    for ($i = 1; $i -le $maxSearchAhead; $i++) {
+        $next = [version]::new($current.Major, $current.Minor, $current.Build + $i)
+        $testUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/installer_V$($next.ToString()).ps1"
+
+        try {
+            Invoke-WebRequest -Uri $testUrl -Method Head -UseBasicParsing -ErrorAction Stop | Out-Null
+            return $next.ToString()
+        } catch {
+            continue
         }
     }
+
+    return $null
 }
 
 function Get-LatestVersion {
@@ -41,7 +38,7 @@ function Get-LatestVersion {
 }
 
 function Update-ScriptNow {
-    $scriptUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/installer.ps1"
+    $scriptUrl = Get-ScriptUrl
     $myPath = $MyInvocation.MyCommand.Path
     try {
         Invoke-WebRequest -Uri $scriptUrl -OutFile $myPath -UseBasicParsing -ErrorAction Stop
@@ -53,7 +50,7 @@ function Update-ScriptNow {
 
 function Update-AfterClose {
     $tempScript = "$env:TEMP\Dreamii_Update.ps1"
-    $scriptUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/installer.ps1"
+    $scriptUrl = Get-ScriptUrl
     $targetPath = $MyInvocation.MyCommand.Path
 
     @"
@@ -65,8 +62,14 @@ Invoke-WebRequest -Uri '$scriptUrl' -OutFile '$targetPath' -UseBasicParsing -Err
     schtasks /Run /TN "DreamiiVoid_Update" > $null
 }
 
+function Get-ScriptUrl {
+    # Build the URL dynamically based on the current version
+    $baseScriptUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/installer_V"
+    return "$baseScriptUrl$CurrentVersion.ps1"
+}
+
 function Check-ForUpdate {
-    $latest = Get-LatestVersion
+    $latest = Get-NextAvailableVersion -currentVersion $CurrentVersion
     if (-not $latest) { return }
 
     if ($CurrentVersion -ne $latest) {
@@ -136,6 +139,24 @@ function AutomaterInstaller () {
         Remove-Item $zipDest
         [System.Windows.Forms.MessageBox]::Show("Automater Installed.", "Done")
     }
+}
+
+function Offline_Roblox_Studio() {
+    $obs_Form = New-Object Windows.Forms.Form
+    $obs_Form.Text = "Offline Studio Manage Menu"
+    $obs_Form.Size = New-Object System.Drawing.Size(500, 300)
+    $obs_Form.StartPosition = 'CenterScreen'
+    $obs_Form.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
+    $obs_Form.FormBorderStyle = 'FixedDialog'
+    $obs_Form.MaximizeBox = $false
+    $obs_Form.TopMost = $true
+
+    $fullPacket = New-ModernButton "Full Packet" (New-Object Drawing.point(40, 50)) { FullPacketInstaller }
+    $rbsAutomater = New-ModernButton "Automater" (New-Object Drawing.point(270, 50)) { AutomaterInstaller }
+    $exitrbs = New-ModernButton "Exit" (New-Object Drawing.point(270, 140)) { $obs_Form.Close() }
+
+    $obs_Form.Controls.AddRange(@($fullPacket, $rbsAutomater, $exitrbs))
+    $obs_Form.ShowDialog()
 }
 
 # MAIN MENU BUTTONS
