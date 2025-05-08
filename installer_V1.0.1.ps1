@@ -4,7 +4,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # VERSION CONTROL SETUP
-$CurrentVersion = "1.0.0"  # This should be your current version number
+$CurrentVersion = "1.0.1"  # This should be your current version number
 
 function Get-NextAvailableVersion {
     param (
