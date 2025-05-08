@@ -4,7 +4,7 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # VERSION CONTROL SETUP
-$CurrentVersion = "1.0.0"
+$CurrentVersion = "1.0.1"
 
 function Get-LatestVersion {
     $versionUrl = "https://github.com/Usfis/General-Installer/blob/main/version.txt"
