@@ -4,73 +4,11 @@ Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
 # VERSION CONTROL SETUP
-$CurrentVersion = "1.0.2"
-
-function Show-CustomUpdateDialog {
-    # Create the custom form
-    $dialogForm = New-Object Windows.Forms.Form
-    $dialogForm.Text = "Update Available"
-    $dialogForm.Size = New-Object System.Drawing.Size(400, 200)
-    $dialogForm.StartPosition = 'CenterScreen'
-    $dialogForm.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
-    $dialogForm.FormBorderStyle = 'FixedDialog'
-    $dialogForm.MaximizeBox = $false
-    $dialogForm.TopMost = $true
-
-    # Message label
-    $msgLabel = New-Object Windows.Forms.Label
-    $msgLabel.Text = "A new version is available!`nCurrent: $CurrentVersion`nLatest: $latest`nDo you want to update?"
-    $msgLabel.ForeColor = [System.Drawing.Color]::White
-    $msgLabel.AutoSize = $true
-    $msgLabel.Location = New-Object System.Drawing.Point(10, 10)
-    $dialogForm.Controls.Add($msgLabel)
-
-    # Yes button (update now)
-    $yesButton = New-Object Windows.Forms.Button
-    $yesButton.Text = "Yes"
-    $yesButton.Size = New-Object System.Drawing.Size(100, 40)
-    $yesButton.Location = New-Object System.Drawing.Point(40, 100)
-    $yesButton.Add_Click({
-        $dialogForm.Close()
-        Update-ScriptNow
-    })
-    $dialogForm.Controls.Add($yesButton)
-
-    # Later button (update after script close)
-    $laterButton = New-Object Windows.Forms.Button
-    $laterButton.Text = "Later"
-    $laterButton.Size = New-Object System.Drawing.Size(100, 40)
-    $laterButton.Location = New-Object System.Drawing.Point(150, 100)
-    $laterButton.Add_Click({
-        $dialogForm.Close()
-        Update-AfterClose
-    })
-    $dialogForm.Controls.Add($laterButton)
-
-    # Cancel button (no update)
-    $cancelButton = New-Object Windows.Forms.Button
-    $cancelButton.Text = "Cancel"
-    $cancelButton.Size = New-Object System.Drawing.Size(100, 40)
-    $cancelButton.Location = New-Object System.Drawing.Point(260, 100)
-    $cancelButton.Add_Click({
-        $dialogForm.Close()
-    })
-    $dialogForm.Controls.Add($cancelButton)
-
-    # Show the custom dialog
-    $dialogForm.ShowDialog()
-}
-
-# Replace this line in Check-ForUpdate with the new custom dialog:
-if ($CurrentVersion -ne $latest) {
-    Show-CustomUpdateDialog
-}
-
-
+$CurrentVersion = "1.0.0"
 
 
 function Get-LatestVersion {
-    $versionUrl = "https://github.com/Usfis/General-Installer/blob/main/version.txt"
+    $versionUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/version.txt"
     try {
         return (Invoke-RestMethod -Uri $versionUrl -UseBasicParsing).Trim()
     } catch {
@@ -79,7 +17,7 @@ function Get-LatestVersion {
 }
 
 function Update-ScriptNow {
-    $scriptUrl = "https://raw.githubusercontent.com/YourUser/YourRepo/main/installer.ps1"
+    $scriptUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/installer.ps1"  # Correct script URL for raw file
     $myPath = $MyInvocation.MyCommand.Path
     try {
         Invoke-WebRequest -Uri $scriptUrl -OutFile $myPath -UseBasicParsing -ErrorAction Stop
@@ -91,7 +29,7 @@ function Update-ScriptNow {
 
 function Update-AfterClose {
     $tempScript = "$env:TEMP\Dreamii_Update.ps1"
-    $scriptUrl = "https://raw.githubusercontent.com/YourUser/YourRepo/main/installer.ps1"
+    $scriptUrl = "https://raw.githubusercontent.com/Usfis/General-Installer/main/installer.ps1"  # Correct script URL for raw file
     $targetPath = $MyInvocation.MyCommand.Path
 
     @"
@@ -103,8 +41,20 @@ Invoke-WebRequest -Uri '$scriptUrl' -OutFile '$targetPath' -UseBasicParsing -Err
     schtasks /Run /TN "DreamiiVoid_Update" > $null
 }
 
-if ($CurrentVersion -ne $latest) {
-    Show-CustomUpdateDialog
+function Check-ForUpdate {
+    $latest = Get-LatestVersion
+    if (-not $latest) { return }
+
+    if ($CurrentVersion -ne $latest) {
+        $msg = "A new version is available!`nCurrent: $CurrentVersion`nLatest: $latest`nDo you want to update?"
+        $choice = [System.Windows.Forms.MessageBox]::Show($msg, "Update Available", [System.Windows.Forms.MessageBoxButtons]::YesNoCancel)
+
+        switch ($choice) {
+            "Yes" { Update-ScriptNow }
+            "No"  { Update-AfterClose }
+            default { return }
+        }
+    }
 }
 
 # GUI SETUP
